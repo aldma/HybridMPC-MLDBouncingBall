@@ -1,20 +1,21 @@
-clear
+clear all %#ok
 close all
 clc
+
 %% flow map parameters
 T_s=.01;
 g=9.8;
 lambda=.7;
- A_f=[1 T_s
-     0 1];
+A_f=[1 T_s
+    0 1];
 B_f=[0
     0];
 C_f=[-T_s^2*g
     -T_s*g];
 %% jump map parameters
 A_g=[1 -T_s
-   0 -lambda];
- B_g=[0
+    0 -lambda];
+B_g=[0
     1];
 C_g=[0
     0];
@@ -66,40 +67,42 @@ x1=2;
 x2=0;
 T_f=349; % simulation time
 T_p=1; % control horizon
-x_1=x1;
-x_2=x2;
-u_f=[];
-u_=[];
- for i=1:T_f
-%% b for next steps that x(i) is written as sumation of z_1 and z_2 so we dont need them in b
-x=[x1
-    x2];
+x_1 = nan(1,T_f+1);
+x_2 = nan(1,T_f+1);
+x_1(1) = x1;
+x_2(1) = x2;
+u_f = nan(1,T_f);
+u_ = nan(1,T_f);
 
- [S1,S2]=costfunction(AA,Q_c,A_g,Q_d,R_d,R_c,P,x);
-%%
-     bb=b(A_g,x,x1,x2,m2,M11,M12,M2,h,sigma,M3,xmax,xmin,m11,m12,u_max,u_min);
-%% binary variabels
-
+% binary variables
 ivar=[4,9,14,19];
+
+% solver configuration
 options = [];
-miqp(S1,S2,A,bb,[],[],ivar,[],[],x0,options);
 
-x_11=AA*ans(1:5)+A_g*x+C_g;
+for i=1:T_f
+    %% b for next steps that x(i) is written as sumation of z_1 and z_2 so we dont need them in b
+    x=[x1
+        x2];
 
-x_12=[x_11]';     
-   x1=x_11(1);
-  x2=x_11(2);    
-  x_1=[x_1; x_12(:,1)];
- x_2=[x_2; x_12(:,2)];
-  u_fi=[ans(4)];
-u_f=[u_f,u_fi] ;
- 
-   u_i=[ans(5)];
-u_=[u_,u_i] ;
+    [S1,S2]=costfunction(AA,Q_c,A_g,Q_d,R_d,R_c,P,x);
+    
+    bb=b(A_g,x,x1,x2,m2,M11,M12,M2,h,sigma,M3,xmax,xmin,m11,m12,u_max,u_min);
+    
+    % solver call
+    optsol = miqp(S1,S2,A,bb,[],[],ivar,[],[],x0,options);
 
+    x_11=AA*optsol(1:5)+A_g*x+C_g;
+    x1=x_11(1);
+    x2=x_11(2);
+    x_1(i+1) = x1;
+    x_2(i+1) = x2;
+    u_f(i) = optsol(4);
+    u_(i) = optsol(5);
 
- 
-   x0=ans;
- end
- %% ploting
+    % warmstart
+    x0 = optsol;
+end
+
+%% plotting
 plotting(T_p,T_f,u_f,x_1,x_2,u_)
