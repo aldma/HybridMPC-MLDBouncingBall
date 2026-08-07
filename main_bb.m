@@ -81,6 +81,26 @@ ivar = 4:5:(5*N);
 % solver configuration
 options = [];
 
+EXT_noptx = 7*N;
+EXT_optx0 = zeros(EXT_noptx,1);
+EXT_ivar = 4:7:EXT_noptx;
+EXT_idxx = sort([6:7:EXT_noptx, 7:7:EXT_noptx]);
+EXT_idxa = setdiff(1:EXT_noptx,EXT_idxx);
+EXT_A = zeros(size(A,1),EXT_noptx);
+EXT_A(:,EXT_idxa) = A;
+EXT_Aeq = zeros(2*N,EXT_noptx);
+EXT_beq = zeros(2*N,1);
+for j = 1:N
+    EXT_Aeq((1:2)+2*(j-1),(1:5)+7*(j-1)) = -AA;
+    EXT_Aeq((1:2)+2*(j-1),(6:7)+7*(j-1)) = eye(2);
+    if j > 1
+        EXT_Aeq((1:2)+2*(j-1),(6:7)+7*(j-2)) = -A_g;
+        EXT_beq((1:2)+2*(j-1)) = C_g;
+    end
+end
+EXT_S1 = zeros(EXT_noptx,EXT_noptx);
+EXT_S2 = zeros(EXT_noptx,1);
+
 for i=1:T_f
     %% b for next steps that x(i) is written as sumation of z_1 and z_2 so we dont need them in b
     x = [x1; x2];
@@ -100,8 +120,22 @@ for i=1:T_f
     u_f(i) = optsol(4);
     u_(i) = optsol(5);
 
+    %=======
+    % with extended decision vector
+    % EXT_optvec = [z1,rho1,u1,x2, z2,rho2,u2,x3, ..., zN,rhoN,uN,xN+1]
+    %=======
+    EXT_S1(EXT_idxa,EXT_idxa) = S1;
+    EXT_S2(EXT_idxa) = S2;
+    EXT_b = bb;
+    EXT_beq(1:2) = A_g*x + C_g;
+    % solver call
+    EXT_optsol = miqp(EXT_S1,EXT_S2,EXT_A,EXT_b,EXT_Aeq,EXT_beq,...
+        EXT_ivar,[],[],EXT_optx0,options);
+    EXT_x_11 = EXT_optsol(6:7);
+
     % warmstart
     optx0 = optsol;
+    EXT_optx0 = EXT_optsol;
 end
 
 %% plotting
