@@ -75,6 +75,12 @@ x_2(1) = x2;
 u_f = nan(1,T_f);
 u_ = nan(1,T_f);
 
+% lower and upper bounds
+lb = -inf(5*N,1);
+ub = inf(5*N,1);
+lb(5:5:end) = u_min;
+ub(5:5:end) = u_max;
+
 % binary variables
 ivar = 4:5:(5*N);
 
@@ -107,10 +113,10 @@ for i=1:T_f
 
     % optvec = [z1,rho1,u1, z2,rho2,u2, ..., zN,rhoN,uN]
     [S1,S2] = costfunction(AA,Q_c,A_g,Q_d,R_d,R_c,P,x);
-    bb = b(A_g,x,m2,M1,M2,h,sigma,M3,xmax,xmin,m1,u_max,u_min);
+    bb = b(A_g,x,m2,M1,M2,h,sigma,M3,xmax,xmin,m1);
     
     % solver call
-    optsol = miqp(S1,S2,A,bb,[],[],ivar,[],[],optx0,options);
+    optsol = miqp(S1,S2,A,bb,[],[],ivar,lb,ub,optx0,options);
 
     x_11=AA*optsol(1:5)+A_g*x+C_g;
     x1=x_11(1);
