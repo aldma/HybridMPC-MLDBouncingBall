@@ -51,7 +51,7 @@ m3  = h(1)*(cc9(1)*x_1max+(1-cc9(1))*x_1min)+h(2)*(cc9(2)*x_2max+(1-cc9(2))*x_2m
 AA=AA(A_f,A_g,B_f,B_g,C_f,C_g);
 
 %% calculating A for F1*X<b
-A=F1(AA,A_g,h,M11,M12,M2,M3,m11,m12,m2,m3,sigma);
+A = F1(AA,A_g,h,M1,M2,M3,m1,m2,m3,sigma);
 
 %% cost function parameters
 Q_c = 2e-1*eye(2);
@@ -107,7 +107,7 @@ for i=1:T_f
 
     % optvec = [z1,rho1,u1, z2,rho2,u2, ..., zN,rhoN,uN]
     [S1,S2] = costfunction(AA,Q_c,A_g,Q_d,R_d,R_c,P,x);
-    bb = b(A_g,x,x1,x2,m2,M11,M12,M2,h,sigma,M3,xmax,xmin,m11,m12,u_max,u_min);
+    bb = b(A_g,x,m2,M1,M2,h,sigma,M3,xmax,xmin,m1,u_max,u_min);
     
     % solver call
     optsol = miqp(S1,S2,A,bb,[],[],ivar,[],[],optx0,options);

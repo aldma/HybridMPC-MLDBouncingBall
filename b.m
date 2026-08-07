@@ -1,15 +1,15 @@
-function output=b(A_g,x,x1,x2,m2,M11,M12,M2,h,sigma,M3,xmax,xmin,m11,m12,u_max,u_min)
+function output = b(A_g,x,m2,M1,M2,h,sigma,M3,xmax,xmin,m1,u_max,u_min)
 
 
- b_0=[zeros(6,1)
-    x1
-    x2
-    -m2
-    -x1
-    -x2
+b_0=[zeros(6,1)
+    x(1)
+    x(2)
+    -m2 % paper 280, eq. (22), block
+    -x(1)
+    -x(2)
     M2
-    0+h(1,1)*x1+h(1,2)*x2
-    -h(1,1)*x1-h(1,2)*x2
+    0+h(1)*x(1)+h(2)*x(2)
+    -h(1)*x(1)-h(2)*x(2)
     0
     0
     0
@@ -17,12 +17,12 @@ function output=b(A_g,x,x1,x2,m2,M11,M12,M2,h,sigma,M3,xmax,xmin,m11,m12,u_max,u
     0
     0];
 
- b00=[zeros(6,1)
-    -m11
-    -m12
+b00=[zeros(6,1)
+    -m1(1)
+    -m1(2)
     -m2
-    +M11
-    +M12
+    +M1(1)
+    +M1(2)
     M2
     0+sigma
     M3
@@ -41,8 +41,8 @@ b_1=[zeros(6,1)
     0
     -x
     0
-    h(1,1)*x(1)+h(1,2)*x(2)
-    -h(1,1)*x(1)-h(1,2)*x(2)
+    h(1)*x(1)+h(2)*x(2)
+    -h(1)*x(1)-h(2)*x(2)
     -x+xmax
     x-xmin
     u_max
@@ -56,8 +56,8 @@ b_2=[zeros(6,1)
     0
     -x
     0
-    h(1,1)*x(1)+h(1,2)*x(2)
-    -h(1,1)*x(1)-h(1,2)*x(2)
+    h(1)*x(1)+h(2)*x(2)
+    -h(1)*x(1)-h(2)*x(2)
     -x+xmax
     x-xmin
     u_max
@@ -72,8 +72,8 @@ b_3=[zeros(6,1)
     0
     -x
     0
-    h(1,1)*x(1)+h(1,2)*x(2)
-    -h(1,1)*x(1)-h(1,2)*x(2)
+    h(1)*x(1)+h(2)*x(2)
+    -h(1)*x(1)-h(2)*x(2)
     -x+xmax
     x-xmin
     u_max
