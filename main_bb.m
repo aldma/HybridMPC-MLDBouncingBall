@@ -92,8 +92,7 @@ EXT_optx0 = zeros(EXT_noptx,1);
 EXT_ivar = 4:7:EXT_noptx;
 EXT_idxx = sort([6:7:EXT_noptx, 7:7:EXT_noptx]);
 EXT_idxa = setdiff(1:EXT_noptx,EXT_idxx);
-EXT_A = zeros(size(A,1),EXT_noptx);
-EXT_A(:,EXT_idxa) = A;
+[EXT_A, EXT_b] = make_A_b(N,M1,M2,m1,m2,M3,m3,h,sigma);
 [EXT_Aeq, EXT_beq] = make_Aeq_beq(N,Adyn,A_g,C_g);
 EXT_S1 = zeros(EXT_noptx,EXT_noptx);
 EXT_S2 = zeros(EXT_noptx,1);
@@ -141,6 +140,7 @@ for i = 1:T_f
     [tmpS1,tmpS2] = costfunction(Adyn,Q_c,A_g,Q_d,R_d,R_c,P,EXT_x);
     EXT_S1(EXT_idxa,EXT_idxa) = tmpS1;
     EXT_S2(EXT_idxa) = tmpS2;
+    EXT_b = update_b(EXT_b,M1,M2,m1,m2,M3,h,sigma,EXT_x);
     EXT_beq = update_beq(EXT_beq,A_g,C_g,EXT_x);
     % solver call
     EXT_optsol = miqp(EXT_S1,EXT_S2,EXT_A,EXT_b,EXT_Aeq,EXT_beq,...
@@ -191,4 +191,80 @@ function beq = update_beq(beq,A_g,C_g,xnow)
 %UPDATE_BEQ
 % see eq (23), paper 280.pdf
     beq(1:2) = A_g*xnow + C_g;
+end
+
+function [A, b] = make_A_b(N,M1,M2,m1,m2,M3,m3,h,sigma,xnow)
+%MAKE_A_B
+% see eq (22), paper 280.pdf
+    if nargin < 10
+        xnow = [];
+    end
+    if isempty(xnow)
+        xnow = zeros(2,1);
+    end
+    noptx = 7*N;
+    A = zeros(14*N,noptx);
+    b = zeros(14*N,1);
+    % constant part
+    A0=[1 0 0 -M1(1) 0      % z1 <= M1*rho // block 5
+        0 1 0 -M1(2) 0
+        0 0 1 -M2 0         % z2 <= M2*rho // block 6
+        -1 0 0 m1(1) 0      % z1 >= m1*rho // block 7
+        0 -1 0 m1(2) 0
+        0 0 -1 m2 0         % z2 >= m2*rho // block 8
+        0 0 0 (m3+sigma) 0  % // block 9=11
+        0 0 0 (M3-sigma) 0  % // block 10=12
+        1 0 0 -m1(1) 0      % z1 - x + m1*(1-rho) <= 0 // block 13
+        0 1 0 -m1(2) 0
+        0 0 1 -m2 -1        % z2 - u + m2*(1-rho) <= 0 // block 14
+        -1 0 0 M1(1) 0      % x - z1 - M1*(1-rho) <= 0 // block 15
+        0 -1 0 M1(2) 0
+        0 0 -1 M2 1];       % u - z2 - M2*(1-rho) <= 0 // block 16
+    b0=[zeros(6,1)          % // blocks 5-6-7-8
+        sigma               % // block 9=11
+        M3                  % // block 10=12
+        -m1                 % // block 13
+        -m2                 % // block 14
+        M1                  % // block 15
+        M2];                % // block 16
+    % linear part in x
+    Ax = zeros(14,2);
+    Ax(7,:) = -h';          % // block 9=11
+    Ax(8,:) = h';           % // block 10=12
+    Ax(9:10,:) = -eye(2);   % // block 13
+    Ax(12:13,:) = eye(2);   % // block 15
+    % build up
+    for j = 1:N
+        irow = (1:14)+14*(j-1);
+        if j == 1
+            A(irow,1:5) = A0;
+            A(irow,6:7) = 0;
+            b(irow) = b0 - Ax*xnow;
+        else
+            A(irow,(1:5)+7*(j-1)) = A0;
+            A(irow,(6:7)+7*(j-2)) = Ax;
+            b(irow) = b0;
+        end
+    end
+end
+
+function b = update_b(b,M1,M2,m1,m2,M3,h,sigma,xnow)
+%UPDATE_B
+% see eq (22), paper 280.pdf
+    % constant part
+    b0=[zeros(6,1)          % // blocks 5-6-7-8
+        sigma               % // block 9=11
+        M3                  % // block 10=12
+        -m1                 % // block 13
+        -m2                 % // block 14
+        M1                  % // block 15
+        M2];                % // block 16
+    % linear part in x
+    Ax = zeros(14,2);
+    Ax(7,:) = -h';          % // block 9=11
+    Ax(8,:) = h';           % // block 10=12
+    Ax(9:10,:) = -eye(2);   % // block 13
+    Ax(12:13,:) = eye(2);   % // block 15
+    % update
+    b(1:14) = b0 - Ax*xnow;
 end
