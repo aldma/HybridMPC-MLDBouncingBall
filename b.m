@@ -9,7 +9,6 @@ b_0=[zeros(6,1) % // blocks 5-6-7-8
     dot(h, x)   % // block 9
     -dot(h, x)  % // block 10
     zeros(4,1)];
-
 b00=[zeros(6,1) % // blocks 5-6-7-8
     -m1     % // block 13
     -m2     % // block 14
@@ -18,7 +17,6 @@ b00=[zeros(6,1) % // blocks 5-6-7-8
     sigma   % // block 9
     M3      % // block 10
     zeros(4,1)];
-
 b0=b00+b_0;
 
 %% for one step befor
@@ -32,8 +30,8 @@ b_1=[zeros(6,1)
     -dot(h, x)
     -x+xmax
     x-xmin];
-
 b1=b00+b_1;
+
 %% for two step befor
 x=A_g*x;
 b_2=[zeros(6,1)
@@ -45,7 +43,6 @@ b_2=[zeros(6,1)
     -dot(h, x)
     -x+xmax
     x-xmin];
-
 b2=b00+b_2;
 
 %% for two step befor
@@ -59,7 +56,6 @@ b_3=[zeros(6,1)
     -dot(h, x)
     -x+xmax
     x-xmin];
-
 b3=b00+b_3;
 
 output=[b0
