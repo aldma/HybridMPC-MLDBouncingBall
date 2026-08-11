@@ -3,9 +3,9 @@ function output = b(A_g,x,m2,M1,M2,h,sigma,M3,xmax,xmin,m1)
 
 b_0=[zeros(6,1) % // blocks 5-6-7-8
     x           % // block 13
-    -m2         % // block 14 why -m2 and not 0 here?
+    0         % // block 14
     -x          % // block 15
-    M2          % // block 16
+    0          % // block 16
     dot(h, x)   % // block 9
     -dot(h, x)  % // block 10
     zeros(4,1)];
