@@ -54,11 +54,11 @@ Adyn = AA(A_f,A_g,B_f,B_g,C_f,C_g);
 A = F1(Adyn,A_g,h,M1,M2,M3,m1,m2,m3,sigma);
 
 %% cost function parameters
-Q_c = 2e-1*eye(2);
-Q_d = 2e-1*eye(2);
-P   = 1e-1*eye(2);
-R_c = 1e-2;
-R_d = 1e-2;
+Q_c = 2e-1*eye(2); % 2e-1
+Q_d = 2e-1*eye(2); % 2e-1
+P   = 1e-1*eye(2); % 1e-1 can be changed
+R_c = 1e-2; % 1e-2
+R_d = 1e-2; % 1e-2
 
 %% initial value
 x1 = 2;
@@ -85,7 +85,8 @@ ub(5:5:end) = u_max;
 ivar = 4:5:(5*N);
 
 % solver configuration
-options = [];
+options = struct();
+options.verbose = 0;
 
 EXT_noptx = 7*N;
 EXT_optx0 = zeros(EXT_noptx,1);
@@ -94,15 +95,15 @@ EXT_idxx = sort([6:7:EXT_noptx, 7:7:EXT_noptx]);
 EXT_idxa = setdiff(1:EXT_noptx,EXT_idxx);
 [EXT_A, EXT_b] = make_A_b(N,M1,M2,m1,m2,M3,m3,h,sigma);
 [EXT_Aeq, EXT_beq] = make_Aeq_beq(N,Adyn,A_g,C_g);
-EXT_S1 = zeros(EXT_noptx,EXT_noptx);
-EXT_S2 = zeros(EXT_noptx,1);
+% EXT_S1 = zeros(EXT_noptx,EXT_noptx);
+% EXT_S2 = zeros(EXT_noptx,1);
+[EXT_S1, EXT_S2] = make_cost(Q_c,R_c,Q_d,R_d,P,EXT_noptx,N,EXT_idxa,EXT_idxx);
 EXT_lb = -inf(EXT_noptx,1);
 EXT_ub = inf(EXT_noptx,1);
 EXT_lb(EXT_idxa) = lb;
 EXT_ub(EXT_idxa) = ub;
 EXT_lb(EXT_idxx) = repmat(xmin,N,1);
 EXT_ub(EXT_idxx) = repmat(xmax,N,1);
-
 EXT_x1 = x1;
 EXT_x2 = x2;
 EXT_x_1 = nan(1,T_f+1);
@@ -113,6 +114,7 @@ EXT_u_f = nan(1,T_f);
 EXT_u_ = nan(1,T_f);
 
 for i = 1:T_f
+    fprintf("time step %d\n",i)
     % current state
     x = [x1; x2];
     EXT_x = [EXT_x1; EXT_x2];
@@ -131,46 +133,91 @@ for i = 1:T_f
     x_2(i+1) = x_11(2);
     u_f(i) = optsol(4);
     u_(i) = optsol(5);
-
+    optx0 = optsol;
+    x1 = x_11(1);
+    x2 = x_11(2);
     
     %============================================================%
     % extended decision vector: explicit state x
     % EXT_optvec = [z1,rho1,u1,x2, z2,rho2,u2,x3, ..., zN,rhoN,uN,xN+1]
     %============================================================%
-    [tmpS1,tmpS2] = costfunction(Adyn,Q_c,A_g,Q_d,R_d,R_c,P,EXT_x);
-    EXT_S1(EXT_idxa,EXT_idxa) = tmpS1;
-    EXT_S2(EXT_idxa) = tmpS2;
+    % [tmpS1,tmpS2] = costfunction(Adyn,Q_c,A_g,Q_d,R_d,R_c,P,EXT_x);
+    % EXT_S1(EXT_idxa,EXT_idxa) = tmpS1;
+    % EXT_S2(EXT_idxa) = tmpS2;
+    EXT_S2 = update_cost(EXT_S2,Q_c,Q_d,EXT_x,EXT_idxa);
     EXT_b = update_b(EXT_b,M1,M2,m1,m2,M3,h,sigma,EXT_x);
     EXT_beq = update_beq(EXT_beq,A_g,C_g,EXT_x);
     % solver call
-    EXT_optsol = miqp(EXT_S1,EXT_S2,EXT_A,EXT_b,EXT_Aeq,EXT_beq,...
+    [EXT_optsol,fmin,flag,output] = miqp(EXT_S1,EXT_S2,EXT_A,EXT_b,EXT_Aeq,EXT_beq,...
         EXT_ivar,EXT_lb,EXT_ub,EXT_optx0,options);
     % store values
     EXT_u_f(i) = EXT_optsol(4);
     EXT_u_(i) = EXT_optsol(5);
     EXT_x_1(i+1) = EXT_optsol(6);
     EXT_x_2(i+1) = EXT_optsol(7);
-
-    % warmstart
-    optx0 = optsol;
     EXT_optx0 = EXT_optsol;
-
-    % next state
-    x1 = x_11(1);
-    x2 = x_11(2);
     EXT_x1 = EXT_optsol(6);
     EXT_x2 = EXT_optsol(7);
 end
 
 %% plotting
-figure
+figure("Name","original")
 plotting(T_p,T_f,u_f,x_1,x_2,u_)
 
-figure
+figure("Name","extended")
 plotting(T_p,T_f,EXT_u_f,EXT_x_1,EXT_x_2,EXT_u_)
 drawnow
 
+% %% compare cost implementations
+% [EXT_S1_sand,EXT_S2_sand] = make_cost(Q_c,R_c,Q_d,R_d,P,EXT_x,N,EXT_idxa,EXT_idxx);
+% 
+% longx = EXT_optsol;
+% x = longx(EXT_idxa);
+% 
+% c_x = 0.5*dot(x, S1*x) + dot(x, S2);
+% c_longx = 0.5*dot(longx, EXT_S1*longx) + dot(longx, EXT_S2);
+% c_longx_sand = 0.5*dot(longx, EXT_S1_sand*longx) + dot(longx, EXT_S2_sand);
+
+
 %% auxiliary functions for extended MIQP formulation
+function [S1,S2] = make_cost(Q_c,R_c,Q_d,R_d,P,noptx,N,idxa,idxx)
+S1 = zeros(noptx,noptx);
+S2 = zeros(noptx,1);
+% for each step
+for i = 1:N
+    % add u' Rd u
+    idx = idxa(5+5*(i-1));
+    S1(idx,idx) = S1(idx,idx) + R_d;
+    % add x' Qd x and x(N)' P x(N)
+    idx = idxx((1:2)+2*(i-1));
+    if i < N
+        S1(idx,idx) = S1(idx,idx) + Q_d;
+    else
+        S1(idx,idx) = S1(idx,idx) + P;
+    end
+    % add z1' (Qc-Qd) x
+    idx = idxa((1:2)+5*(i-1));
+    if i > 1
+        idx2 = idxx((1:2)+2*(i-2));
+        S1(idx,idx2) = S1(idx,idx2) + (Q_c-Q_d)/2;
+        S1(idx2,idx) = S1(idx2,idx) + (Q_c-Q_d)/2;
+    % else
+        % S2(idx) = (Q_c-Q_d)*xnow;
+    end
+    % add z2' (Rc-Rd) u
+    idx = idxa(3+5*(i-1));
+    idx2 = idxa(5+5*(i-1));
+    S1(idx,idx2) = S1(idx,idx2) + (R_c-R_d)/2;
+    S1(idx2,idx) = S1(idx2,idx) + (R_c-R_d)/2;
+end
+end
+
+function S2 = update_cost(S2,Q_c,Q_d,xnow,idxa)
+% add z1' (Qc-Qd) x
+idx = idxa(1:2);
+S2(idx) = (Q_c-Q_d)*xnow;
+end
+
 function [Aeq, beq] = make_Aeq_beq(N,Adyn,A_g,C_g)
 %MAKE_AEQ_BEQ
 % see eq (23), paper 280.pdf
