@@ -4,10 +4,10 @@ function output=b(A_g,x,x1,x2,m2,M11,M12,M2,h,sigma,M3,xmax,xmin,m11,m12,u_max,u
  b_0=[zeros(6,1)
     x1
     x2
-    -m2
+    0
     -x1
     -x2
-    M2
+    0
     0+h(1,1)*x1+h(1,2)*x2
     -h(1,1)*x1-h(1,2)*x2
     0
